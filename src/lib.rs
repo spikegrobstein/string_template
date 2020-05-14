@@ -8,7 +8,7 @@ pub struct Template {
     matches: Vec<(usize, usize)>,
 }
 
-impl Template {
+impl<'a> Template {
     pub fn new(template: &str) -> Self {
         let regex = Regex::new(r"\{\{([^}]*)\}\}").unwrap();
 
@@ -40,15 +40,17 @@ impl Template {
     ///
     /// assert_eq!(s2, "Hi, my name is Vader and I'm a Dart developer.");
     /// ```
-    pub fn render(&self, vals: &HashMap<&str, &str>) -> String {
+    pub fn render<T>(&self, vals: &HashMap<&str, T>) -> String 
+        where T: Into<String> {
         self.render_named(vals)
     }
 
     ///
     /// See render() for examples.
     ///
-    pub fn render_named(&self, vals: &HashMap<&str, &str>) -> String {
-        let mut parts: Vec<&str> = vec![];
+    pub fn render_named<T>(&self, vals: &HashMap<&str, T>) -> String 
+        where T: Into<String> {
+        let mut parts: Vec<String> = vec![];
         let template_str = &self.src;
 
         // get index of first arg match or return a copy of the template if no args matched
@@ -59,7 +61,7 @@ impl Template {
 
         // copy from template start to first arg
         if first > 0 {
-            parts.push(&template_str[0..first])
+            parts.push(template_str[0..first].to_string())
         }
 
         // keeps the index of the previous argument end
@@ -68,7 +70,7 @@ impl Template {
         for (start, end) in self.matches.iter() {
             // copy from previous argument end till current argument start
             if let Some(last_end) = prev_end {
-                parts.push(&template_str[last_end..*start])
+                parts.push(template_str[last_end..*start].to_string())
             }
 
             // argument name with braces
@@ -79,8 +81,10 @@ impl Template {
             // if value passed for argument then append it, otherwise append original argument
             // name with braces
             match vals.get(arg_name) {
-                Some(s) => parts.push(s),
-                _ => parts.push(arg),
+                Some(s) => {
+                    parts.push(s.into())
+                },
+                _ => parts.push(arg.to_string()),
             }
 
             prev_end = Some(*end);
@@ -91,7 +95,7 @@ impl Template {
         // from last arg end till end of template string
         if let Some(last_pos) = prev_end {
             if last_pos < template_len {
-                parts.push(&template_str[last_pos..template_len])
+                parts.push(template_str[last_pos..template_len].to_string())
             }
         }
 
